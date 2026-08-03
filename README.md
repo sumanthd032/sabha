@@ -57,7 +57,7 @@ All four must pass before any commit lands.
 
 ## Current state
 
-Steps 1 to 7 of the build. The API exposes `/api/health`, returning build
+Steps 1 to 8 of the build. The API exposes `/api/health`, returning build
 metadata including the running commit hash, and is deployed live at
 [sabha-n4f7.onrender.com](https://sabha-n4f7.onrender.com). The frontend has
 a design token library and base component set, with a working reference at
@@ -81,6 +81,16 @@ completable end to end without a mouse. A vote is recorded locally the
 instant it is cast and reconciles with the server afterwards, so a slow
 or interrupted connection never blocks voting, only delays syncing, which
 the screen shows honestly rather than hiding.
+
+A results screen shows the opinion map as a field of tally strokes, the
+faction legend and its accessible text alternative, the bridging ranking
+beside the majority ranking so their disagreement is visible, and the
+consensus certificate: the only element in the interface permitted the
+reserved consensus green and the only one with a 2px border. It stays
+live over the same WebSocket channel, so a refit triggered by anyone's
+vote updates the screen without a reload, and the one orchestrated
+motion moment, a participant's own stroke settling into position while
+the affected statement's figure rolls to its new value, is wired here.
 
 See `docs/architecture.md`, `docs/algorithms.md`, and `docs/api.md` for the
 detail behind each of these.

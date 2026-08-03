@@ -75,3 +75,30 @@ class ModelRunOut(SQLModel):
     created_at: datetime
     participant_count: int
     statement_count: int
+
+
+class OpinionMapPoint(SQLModel):
+    participant_id: int
+    factor: tuple[float, float]
+    cluster: int
+    is_self: bool
+
+
+class OpinionMapOut(SQLModel):
+    model_run_id: int
+    k_clusters: int
+    points: list[OpinionMapPoint]
+
+
+class ClusterSupportOut(SQLModel):
+    cluster: int
+    participant_count: int
+    agree_count: int
+    agree_fraction: float
+
+
+class CertificateOut(SQLModel):
+    model_run_id: int
+    statement: StatementOut
+    participant_count: int
+    clusters: list[ClusterSupportOut]

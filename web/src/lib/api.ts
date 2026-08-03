@@ -39,6 +39,55 @@ export interface VoteResponse {
   created_at: string;
 }
 
+export interface RankingEntry {
+  statement_id: number;
+  code: string;
+  text: string;
+  score: number;
+  rank: number;
+}
+
+export interface Rankings {
+  model_run_id: number | null;
+  model_run_created_at: string | null;
+  bridging: RankingEntry[];
+  majority: RankingEntry[];
+}
+
+export interface OpinionMapPoint {
+  participant_id: number;
+  factor: [number, number];
+  cluster: number;
+  is_self: boolean;
+}
+
+export interface OpinionMap {
+  model_run_id: number;
+  k_clusters: number;
+  points: OpinionMapPoint[];
+}
+
+export interface ClusterSupport {
+  cluster: number;
+  participant_count: number;
+  agree_count: number;
+  agree_fraction: number;
+}
+
+export interface Certificate {
+  model_run_id: number;
+  statement: Statement;
+  participant_count: number;
+  clusters: ClusterSupport[];
+}
+
+export interface RankingsPushMessage {
+  type: "rankings";
+  model_run_id: number;
+  bridging: RankingEntry[];
+  majority: RankingEntry[];
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -92,4 +141,25 @@ export function castVote(
     method: "POST",
     body: JSON.stringify({ session_token: sessionToken, statement_id: statementId, value }),
   });
+}
+
+export function fetchRankings(consultationId: number): Promise<Rankings> {
+  return request(`/api/consultations/${consultationId}/rankings`);
+}
+
+export function fetchOpinionMap(
+  consultationId: number,
+  sessionToken?: string,
+): Promise<OpinionMap> {
+  const query = sessionToken ? `?${new URLSearchParams({ session_token: sessionToken })}` : "";
+  return request(`/api/consultations/${consultationId}/opinion-map${query}`);
+}
+
+export function fetchCertificate(consultationId: number): Promise<Certificate> {
+  return request(`/api/consultations/${consultationId}/certificate`);
+}
+
+export function liveSessionUrl(consultationId: number): string {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/api/consultations/${consultationId}/live`;
 }

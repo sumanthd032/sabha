@@ -12,6 +12,7 @@ import {
   listStatements,
   type Statement,
 } from "../../lib/api";
+import { Link } from "../../lib/router";
 import { useSessionStore } from "../../store/sessionStore";
 import { pendingCount, useVoteQueueStore } from "../../store/voteQueueStore";
 import { StatementPanel } from "./StatementPanel";
@@ -322,6 +323,8 @@ export function VotingScreen() {
             : `${queuedCount} votes are saved on this device and syncing to the server.`}
         </p>
       ) : null}
+
+      <Link to="/results">View the opinion map and rankings</Link>
     </main>
   );
 }
