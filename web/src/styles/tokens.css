@@ -1,0 +1,92 @@
+/*
+ * Design tokens for Sabha, transcribed from section 5 of the build
+ * instructions. Every colour and every size used anywhere in the
+ * application is one of these custom properties. Nothing here is
+ * decorative: the ledger register direction depends on these being
+ * followed exactly, everywhere, with no local override.
+ */
+
+:root {
+  /* Colour. --consensus appears only in the consensus certificate.
+     --flag appears only for escalation state and coordination warnings.
+     Faction colours are assigned by cluster index and carry no meaning. */
+  --ink: #14161a;
+  --ink-soft: #494e55;
+  --ink-faint: #7c838c;
+  --paper: #edeee8;
+  --paper-raised: #f5f6f1;
+  --rule: #c9cbc0;
+  --rule-strong: #a9ac9f;
+  --consensus: #17594a;
+  --flag: #8c2b1e;
+  --faction-1: #4b47c4;
+  --faction-2: #b8336a;
+  --faction-3: #9a6a00;
+  --faction-4: #2e7d74;
+  --faction-5: #6a4e8c;
+
+  /* Type faces. */
+  --font-display: "Zilla Slab", Georgia, serif;
+  --font-body: "IBM Plex Sans", "IBM Plex Sans Devanagari", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Type scale, on an 8px baseline. */
+  --text-display-l-size: 44px;
+  --text-display-l-line: 48px;
+  --text-display-s-size: 28px;
+  --text-display-s-line: 32px;
+  --text-body-l-size: 17px;
+  --text-body-l-line: 28px;
+  --text-body-size: 15px;
+  --text-body-line: 24px;
+  --text-label-size: 13px;
+  --text-label-line: 16px;
+  --text-label-tracking: 0.02em;
+  --text-figure-size: 15px;
+  --text-figure-line: 24px;
+  --text-code-size: 12px;
+  --text-code-line: 16px;
+  --text-code-tracking: 0.04em;
+
+  /* Spacing, 4px base, 8px baseline grid. */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --space-64: 64px;
+  --space-96: 96px;
+
+  /* Layout. */
+  --content-max-width: 1120px;
+  --grid-columns: 12;
+  --grid-gutter: 24px;
+
+  /* Structure. */
+  --rule-width: 1px;
+  --radius-sm: 2px;
+  --radius-none: 0;
+
+  /* Focus. */
+  --focus-outline-width: 2px;
+  --focus-outline-offset: 2px;
+
+  /* Motion. */
+  --dur-micro: 120ms;
+  --dur-settle: 240ms;
+  --dur-tally: 400ms;
+  --ease: cubic-bezier(0.2, 0, 0.13, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

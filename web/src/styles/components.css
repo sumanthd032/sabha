@@ -1,0 +1,176 @@
+/*
+ * Base component primitives. Every value here is a var() reference into
+ * tokens.css, or a calc() derived from one. No colour or size literal is
+ * introduced in this file.
+ */
+
+.rule {
+  border: 0;
+  border-bottom: var(--rule-width) solid var(--rule);
+  margin: 0;
+  width: 100%;
+}
+
+.rule--strong {
+  border-bottom-color: var(--rule-strong);
+}
+
+.figure {
+  display: block;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: var(--text-figure-size);
+  line-height: var(--text-figure-line);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
+}
+
+.statement-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+  line-height: var(--text-code-line);
+  letter-spacing: var(--text-code-tracking);
+  color: var(--ink-soft);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-micro) var(--ease);
+}
+
+.button--primary {
+  background: var(--ink);
+  color: var(--paper);
+  border: var(--rule-width) solid var(--ink);
+}
+
+.button--primary:hover {
+  border-color: var(--ink-soft);
+}
+
+.button--secondary {
+  background: var(--paper-raised);
+  color: var(--ink);
+  border: var(--rule-width) solid var(--rule-strong);
+}
+
+.button--secondary:hover {
+  border-color: var(--ink);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  color: var(--ink-faint);
+  background: var(--paper-raised);
+  border-color: var(--rule);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field__label {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line);
+  letter-spacing: var(--text-label-tracking);
+  color: var(--ink-soft);
+}
+
+.field__input {
+  font-family: var(--font-body);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: var(--rule-width) solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-8) var(--space-12);
+  transition: border-color var(--dur-micro) var(--ease);
+}
+
+.field__input:hover {
+  border-color: var(--ink-soft);
+}
+
+.field__input:disabled {
+  color: var(--ink-faint);
+  background: var(--paper);
+  border-color: var(--rule);
+  cursor: not-allowed;
+}
+
+.field--error .field__input {
+  border-color: var(--ink);
+  border-width: calc(var(--rule-width) * 2);
+}
+
+.ledger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-12) 0;
+  border-bottom: var(--rule-width) solid var(--rule);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+  padding: var(--space-32) 0;
+  border-bottom: var(--rule-width) solid var(--rule);
+}
+
+.empty-state__heading {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--text-body-l-size);
+  line-height: var(--text-body-l-line);
+  color: var(--ink);
+}
+
+.empty-state__body {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--ink-soft);
+}
+
+.error-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-16);
+  background: var(--paper-raised);
+  border: var(--rule-width) solid var(--ink);
+  border-left-width: calc(var(--rule-width) * 4);
+}
+
+.error-note__heading {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--ink);
+}
+
+.error-note__body {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--ink-soft);
+}
