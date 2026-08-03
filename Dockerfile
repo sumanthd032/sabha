@@ -25,5 +25,5 @@ COPY --from=frontend /web/dist ./static
 COPY --from=commit /COMMIT_SHA ./COMMIT_SHA
 
 ENV PYTHONUNBUFFERED=1
-EXPOSE 7860
-CMD ["uvicorn", "sabha.main:app", "--host", "0.0.0.0", "--port", "7860"]
+EXPOSE 10000
+CMD ["sh", "-c", "uvicorn sabha.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
