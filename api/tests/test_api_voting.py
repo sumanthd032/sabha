@@ -42,6 +42,29 @@ def test_a_scripted_client_joins_votes_adaptively_and_sees_pushed_rankings(
         }
     high_loading_threshold = sorted(loading_norms.values())[len(loading_norms) // 2]
 
+    # select_next_statement keeps a small random reserve (see
+    # SelectionParams.reserve_fraction), so any single call has a one in
+    # ten chance of a uniform pick instead of the locate phase's choice.
+    # Repeating the very first call, before anything is voted on, and
+    # taking the mode averages that noise out without touching the
+    # server's own unseeded rng.
+    first_pick_attempts = []
+    for _ in range(10):
+        response = client.get(
+            f"/api/consultations/{consultation_id}/statements/next",
+            params={"session_token": session_token},
+        )
+        assert response.status_code == 200
+        statement = response.json()
+        assert statement is not None
+        first_pick_attempts.append(statement["id"])
+    most_common_first_pick = max(set(first_pick_attempts), key=first_pick_attempts.count)
+
+    # The very first statement served to a brand new participant, whose
+    # own opinion position is entirely unknown, should be a discriminating
+    # one: adaptive selection's locate phase, not an arbitrary pick.
+    assert loading_norms[most_common_first_pick] >= high_loading_threshold
+
     voted_statement_ids: list[int] = []
     for _ in range(5):
         next_response = client.get(
@@ -59,11 +82,6 @@ def test_a_scripted_client_joins_votes_adaptively_and_sees_pushed_rankings(
         )
         assert vote_response.status_code == 200
         voted_statement_ids.append(statement["id"])
-
-    # The very first statement served to a brand new participant, whose
-    # own opinion position is entirely unknown, should be a discriminating
-    # one: adaptive selection's locate phase, not an arbitrary pick.
-    assert loading_norms[voted_statement_ids[0]] >= high_loading_threshold
 
 
 def test_the_websocket_channel_pushes_rankings_after_a_vote(
