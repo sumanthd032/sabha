@@ -26,7 +26,13 @@ autosuspend, rather than needing a separate mechanism for each.
 
 The container listens on the `PORT` environment variable Render assigns
 at runtime rather than a fixed port, since that is how Render routes
-traffic to a Docker web service. The database remains Neon Postgres,
+traffic to a Docker web service. Render's remote builder also does not
+include `.git` in the context it hands to the image, unlike a local
+`docker build`, so the health endpoint's commit hash comes from the
+`RENDER_GIT_COMMIT` variable Render injects into the running container at
+runtime, with a local `git rev-parse` fallback for development, rather
+than from anything baked into the image at build time. The database
+remains Neon Postgres,
 which autosuspends but wakes in about a second. Continuous integration
 and deployment run on GitHub Actions against a public repository, which
 keeps Actions minutes unlimited. Deployment itself is a `curl` to a

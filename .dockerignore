@@ -1,7 +1,7 @@
 CLAUDE.md
 PROJECT.md
 .env
-.git/hooks
+.git
 .github
 node_modules
 web/dist
