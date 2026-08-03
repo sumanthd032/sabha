@@ -3,17 +3,22 @@
 Serves the API under /api and, when a built frontend is present, the static
 bundle at every other path, with a catch-all returning index.html so client
 side routing works. One origin means no CORS layer and a same-origin
-WebSocket once the live session channel lands in step 6.
+WebSocket for the live session channel.
 """
 
 import os
 import subprocess
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+
+from sabha.db import init_db
+from sabha.routers import consultations, live, rankings, sessions
 
 APP_VERSION = "0.1.0"
 
@@ -51,7 +56,14 @@ def _read_commit() -> str:
 _COMMIT = _read_commit()
 _STARTED_AT = datetime.now(UTC)
 
-app = FastAPI(title="Sabha")
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    init_db()
+    yield
+
+
+app = FastAPI(title="Sabha", lifespan=_lifespan)
 
 
 @app.get("/api/health")
@@ -63,6 +75,12 @@ def health() -> dict[str, str]:
         "version": APP_VERSION,
         "started_at": _STARTED_AT.isoformat(),
     }
+
+
+app.include_router(consultations.router)
+app.include_router(sessions.router)
+app.include_router(rankings.router)
+app.include_router(live.router)
 
 
 if _STATIC_DIR.exists():

@@ -9,17 +9,19 @@ row that might have moved on since.
 
 from dataclasses import asdict
 
+import numpy as np
 from sqlmodel import Session, col, select
 
 from sabha.models import ModelRun, Participant, Statement, Vote
 from sabha.services.clustering import choose_k
-from sabha.services.factorisation import FactorisationParams, fit
+from sabha.services.factorisation import FactorisationParams, FactorisationResult, fit
 
 
 def fit_and_persist(
     session: Session,
     consultation_id: int,
     params: FactorisationParams | None = None,
+    participant_weights: dict[int, float] | None = None,
 ) -> ModelRun:
     """Fit on every observed vote for one consultation and store the snapshot."""
     params = params or FactorisationParams()
@@ -41,7 +43,7 @@ def fit_and_persist(
     ).all()
     votes = [(v.participant_id, v.statement_id, v.value) for v in vote_rows]
 
-    result = fit(participant_ids, statement_ids, votes, params)
+    result = fit(participant_ids, statement_ids, votes, params, participant_weights)
     k_clusters, labels = choose_k(result.f)
 
     model_run = ModelRun(
@@ -66,3 +68,39 @@ def fit_and_persist(
     session.commit()
     session.refresh(model_run)
     return model_run
+
+
+def latest_model_run(session: Session, consultation_id: int) -> ModelRun | None:
+    """The most recently fitted snapshot for a consultation, or None before
+    the first refit."""
+    return session.exec(
+        select(ModelRun)
+        .where(ModelRun.consultation_id == consultation_id)
+        .order_by(col(ModelRun.id).desc())
+    ).first()
+
+
+def result_from_model_run(model_run: ModelRun) -> FactorisationResult:
+    """Rebuild a FactorisationResult from a persisted snapshot.
+
+    Statement and participant ids are read independently from each of
+    the two dictionaries they key, rather than trusted to share one
+    iteration order, since JSON object key order is a convention every
+    encoder here happens to honour, not a guarantee this should lean on.
+    """
+    statement_ids = sorted(int(sid) for sid in model_run.statement_intercepts)
+    participant_ids = sorted(int(pid) for pid in model_run.participant_biases)
+    mu = np.array([model_run.statement_intercepts[str(sid)] for sid in statement_ids])
+    g = np.array([model_run.statement_loadings[str(sid)] for sid in statement_ids])
+    b = np.array([model_run.participant_biases[str(pid)] for pid in participant_ids])
+    f = np.array([model_run.participant_factors[str(pid)] for pid in participant_ids])
+    params = FactorisationParams(**model_run.params)
+    return FactorisationResult(
+        participant_ids=participant_ids,
+        statement_ids=statement_ids,
+        mu=mu,
+        b=b,
+        f=f,
+        g=g,
+        params=params,
+    )
