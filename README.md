@@ -57,11 +57,11 @@ All four must pass before any commit lands.
 
 ## Current state
 
-Steps 1 to 6 of the build. The API exposes `/api/health`, returning build
+Steps 1 to 7 of the build. The API exposes `/api/health`, returning build
 metadata including the running commit hash, and is deployed live at
 [sabha-n4f7.onrender.com](https://sabha-n4f7.onrender.com). The frontend has
 a design token library and base component set, with a working reference at
-`/system`, but no voting screens yet, those land in step 7.
+`/system`.
 
 The data model covers every entity in `docs/project.md`, with a synthetic
 seed corpus and vote generator whose planted opinion structure is
@@ -74,6 +74,13 @@ then a statement's own score is refined, and a synthetic brigade is
 detected and downweighted without being removed. The REST API and a
 WebSocket live session expose all of it: joining, adaptive voting,
 rankings, and a debounced refit broadcast to everyone in the room.
+
+The voting screen is the primary consultation flow: one statement at a
+time, fully keyboard operable with agree, disagree, and skip, and
+completable end to end without a mouse. A vote is recorded locally the
+instant it is cast and reconciles with the server afterwards, so a slow
+or interrupted connection never blocks voting, only delays syncing, which
+the screen shows honestly rather than hiding.
 
 See `docs/architecture.md`, `docs/algorithms.md`, and `docs/api.md` for the
 detail behind each of these.

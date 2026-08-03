@@ -1,0 +1,95 @@
+/**
+ * Typed fetch wrappers for the voting API. Every shape here mirrors
+ * api/sabha/schemas.py; a change to one is not complete without the other.
+ * Paths are relative so the same code works against the Vite dev proxy
+ * and the same-origin deployed build without an API base URL to configure.
+ */
+
+export interface Consultation {
+  id: number;
+  title: string;
+  question: string;
+  department: string | null;
+  is_synthetic: boolean;
+  opens_at: string;
+  closes_at: string;
+}
+
+export interface Statement {
+  id: number;
+  code: string;
+  text: string;
+  language: string;
+  author_type: "participant" | "generated";
+  parent_statement_id: number | null;
+  is_synthetic: boolean;
+}
+
+export interface JoinResponse {
+  participant_id: number;
+  session_token: string;
+}
+
+export type VoteValue = 1 | -1;
+
+export interface VoteResponse {
+  id: number;
+  statement_id: number;
+  value: VoteValue;
+  created_at: string;
+}
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: { "content-type": "application/json", ...init?.headers },
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    const detail =
+      body && typeof body === "object" && "detail" in body ? String(body.detail) : response.statusText;
+    throw new ApiError(response.status, detail);
+  }
+  return response.json() as Promise<T>;
+}
+
+export function listConsultations(): Promise<Consultation[]> {
+  return request("/api/consultations");
+}
+
+export function listStatements(consultationId: number): Promise<Statement[]> {
+  return request(`/api/consultations/${consultationId}/statements`);
+}
+
+export function joinConsultation(consultationId: number): Promise<JoinResponse> {
+  return request(`/api/consultations/${consultationId}/join`, { method: "POST" });
+}
+
+export function fetchNextStatement(
+  consultationId: number,
+  sessionToken: string,
+): Promise<Statement | null> {
+  const query = new URLSearchParams({ session_token: sessionToken });
+  return request(`/api/consultations/${consultationId}/statements/next?${query.toString()}`);
+}
+
+export function castVote(
+  consultationId: number,
+  sessionToken: string,
+  statementId: number,
+  value: VoteValue,
+): Promise<VoteResponse> {
+  return request(`/api/consultations/${consultationId}/votes`, {
+    method: "POST",
+    body: JSON.stringify({ session_token: sessionToken, statement_id: statementId, value }),
+  });
+}
