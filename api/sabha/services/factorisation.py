@@ -99,11 +99,12 @@ def _compute_loss(
     b: np.ndarray,
     f: np.ndarray,
     g: np.ndarray,
+    weight: np.ndarray,
     params: FactorisationParams,
 ) -> float:
     coo = vote_matrix.tocoo()
     predicted = mu[coo.col] + b[coo.row] + np.einsum("ik,ik->i", f[coo.row], g[coo.col])
-    data_loss = float(np.sum((coo.data - predicted) ** 2))
+    data_loss = float(np.sum(weight[coo.row] * (coo.data - predicted) ** 2))
     reg_loss = (
         params.lambda_factor * float(np.sum(f**2))
         + params.lambda_factor * float(np.sum(g**2))
@@ -118,6 +119,7 @@ def fit(
     statement_ids: list[int],
     votes: list[tuple[int, int, int]],
     params: FactorisationParams | None = None,
+    participant_weights: dict[int, float] | None = None,
 ) -> FactorisationResult:
     """Fit the bridging factorisation model by alternating least squares.
 
@@ -126,12 +128,27 @@ def fit(
     update after that is a fixed sequence of closed form solves. Two
     calls with identical arguments produce identical output, which is
     what lets a model run be reproduced from its snapshot later.
+
+    participant_weights defaults every participant to 1.0. A weight
+    below that, as coordination.py assigns to a detected brigade, only
+    scales that participant's contribution to mu(j) and g(j), the
+    statement level parameters shared across everyone. Their own b(i)
+    and f(i) are still fit at full weight from their own votes, per
+    section 6.4 of the project description: downweight a cluster's
+    influence on what a statement means to the room, do not erase the
+    participants or refuse to place them in the opinion space at all.
     """
     params = params or FactorisationParams()
     vote_matrix = build_vote_matrix(participant_ids, statement_ids, votes)
     vote_matrix_by_column = vote_matrix.tocsc()
     n_participants, n_statements = vote_matrix.shape
     rng = np.random.default_rng(params.seed)
+
+    weight = np.ones(n_participants)
+    if participant_weights:
+        for row, participant_id in enumerate(participant_ids):
+            if participant_id in participant_weights:
+                weight[row] = participant_weights[participant_id]
 
     mu = np.zeros(n_statements)
     b = np.zeros(n_participants)
@@ -148,8 +165,9 @@ def fit(
                 mu[j] = 0.0
                 continue
             values = vote_matrix_by_column.data[start:end]
+            w_seen = weight[rows_seen]
             residual = values - b[rows_seen] - np.einsum("nk,k->n", f[rows_seen], g[j])
-            mu[j] = residual.sum() / (len(rows_seen) + params.lambda_intercept)
+            mu[j] = (w_seen * residual).sum() / (w_seen.sum() + params.lambda_intercept)
 
         for i in range(n_participants):
             start, end = vote_matrix.indptr[i], vote_matrix.indptr[i + 1]
@@ -179,13 +197,16 @@ def fit(
             if len(rows_seen) == 0:
                 continue
             values = vote_matrix_by_column.data[start:end]
+            w_seen = weight[rows_seen]
             residual = values - mu[j] - b[rows_seen]
             f_seen = f[rows_seen]
+            f_seen_weighted = f_seen * w_seen[:, None]
             g[j] = np.linalg.solve(
-                f_seen.T @ f_seen + params.lambda_factor * identity, f_seen.T @ residual
+                f_seen_weighted.T @ f_seen + params.lambda_factor * identity,
+                f_seen_weighted.T @ residual,
             )
 
-        loss_history.append(_compute_loss(vote_matrix, mu, b, f, g, params))
+        loss_history.append(_compute_loss(vote_matrix, mu, b, f, g, weight, params))
 
     return FactorisationResult(
         participant_ids=participant_ids,

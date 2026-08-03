@@ -83,6 +83,33 @@ def test_clustering_recovers_the_planted_factions() -> None:
     assert _cluster_purity(labels, planted) > 0.75
 
 
+def test_participant_weights_reduce_a_downweighted_blocs_pull_on_mu() -> None:
+    """coordination.py hands a downweighted block's ids to fit() as a
+    weight below 1.0. Two genuine dissenters against eight full-weight
+    agreers would lose a plain vote; once the eight are downweighted the
+    intercept should swing back towards the two, matching section 6.4's
+    instruction to degrade a coordinated block's influence, not erase it.
+    """
+    genuine_ids = [0, 1]
+    coordinated_ids = list(range(2, 10))
+    participant_ids = genuine_ids + coordinated_ids
+    statement_ids = [0]
+    votes = [(pid, 0, -1) for pid in genuine_ids] + [(pid, 0, 1) for pid in coordinated_ids]
+
+    params = FactorisationParams(iterations=10)
+    full_weight = fit(participant_ids, statement_ids, votes, params)
+    downweighted = fit(
+        participant_ids,
+        statement_ids,
+        votes,
+        params,
+        participant_weights=dict.fromkeys(coordinated_ids, 0.1),
+    )
+
+    assert full_weight.mu[0] > 0
+    assert downweighted.mu[0] < full_weight.mu[0]
+
+
 def test_refitting_the_same_inputs_reproduces_identical_figures() -> None:
     corpus = generate_corpus(num_participants=150, seed=13)
     participant_ids = list(range(len(corpus.participants)))
