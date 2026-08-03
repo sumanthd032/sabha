@@ -93,11 +93,22 @@ def _generate_statements(rng: np.random.Generator) -> list[SyntheticStatement]:
     return out
 
 
-def _generate_participants(count: int, rng: np.random.Generator) -> list[SyntheticParticipant]:
+def _generate_participants(
+    count: int, rng: np.random.Generator, faction_weights: list[float] | None = None
+) -> list[SyntheticParticipant]:
+    """faction_weights lets a caller plant an unequal split, such as one
+    large majority bloc and two smaller ones, the scenario majority
+    counting gets wrong and the bridging score is meant to get right.
+    Defaults to an even split across the three synthetic factions.
+    """
     centroids = _faction_centroids()
+    weights = np.array(faction_weights) if faction_weights else None
     out = []
     for _ in range(count):
-        faction = int(rng.integers(0, NUM_FACTIONS))
+        if weights is not None:
+            faction = int(rng.choice(NUM_FACTIONS, p=weights))
+        else:
+            faction = int(rng.integers(0, NUM_FACTIONS))
         factor = centroids[faction] + rng.normal(0.0, FACTION_SPREAD, size=NUM_LATENT_DIMS)
         bias = float(rng.normal(0.0, BIAS_SPREAD))
         out.append(SyntheticParticipant(faction=faction, factor=factor, bias=bias))
@@ -108,16 +119,22 @@ def _sigmoid(x: float) -> float:
     return float(1.0 / (1.0 + np.exp(-x)))
 
 
-def generate_corpus(num_participants: int = 300, seed: int = 0) -> GeneratedCorpus:
+def generate_corpus(
+    num_participants: int = 300,
+    seed: int = 0,
+    faction_weights: list[float] | None = None,
+) -> GeneratedCorpus:
     """Plant a latent structure and sample sparse votes consistent with it.
 
     seed fixes the numpy generator so a development rerun produces the
     same synthetic population, which matters for reproducing whatever a
-    test or a demo run saw the first time.
+    test or a demo run saw the first time. faction_weights defaults to
+    an even three way split; pass an unequal one to plant a majority
+    bloc for testing that the bridging score does not simply reward it.
     """
     rng = np.random.default_rng(seed)
     statements = _generate_statements(rng)
-    participants = _generate_participants(num_participants, rng)
+    participants = _generate_participants(num_participants, rng, faction_weights)
 
     votes: list[tuple[int, int, int]] = []
     statement_indices = np.arange(len(statements))
