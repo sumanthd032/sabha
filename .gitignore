@@ -1,0 +1,29 @@
+# working files, never tracked
+CLAUDE.md
+PROJECT.md
+.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+api/dist/
+api/build/
+*.db
+*.db-journal
+
+# node
+node_modules/
+web/dist/
+.vite/
+
+# editors and os
+.DS_Store
+*.swp
+
+# docker build artefact, never present outside the image
+COMMIT_SHA

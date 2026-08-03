@@ -1,0 +1,16 @@
+CLAUDE.md
+PROJECT.md
+.env
+.git/hooks
+.github
+node_modules
+web/dist
+web/node_modules
+api/.venv
+api/.mypy_cache
+api/.ruff_cache
+api/.pytest_cache
+**/__pycache__
+*.pyc
+*.db
+.DS_Store
