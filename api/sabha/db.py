@@ -13,8 +13,26 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from sabha.config import settings
 
-_connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-engine = create_engine(settings.database_url, connect_args=_connect_args)
+
+def _with_psycopg_driver(database_url: str) -> str:
+    """Neon, like every managed Postgres provider, hands out a bare
+    postgresql:// connection string, which SQLAlchemy resolves to the
+    psycopg2 driver by default. This project installs psycopg (v3),
+    never psycopg2, per section 4's stack list, so a bare URL has to be
+    rewritten to name that driver explicitly or create_engine fails at
+    import time with ModuleNotFoundError before the app ever starts.
+    """
+    if database_url.startswith("postgresql+"):
+        return database_url
+    for prefix in ("postgresql://", "postgres://"):
+        if database_url.startswith(prefix):
+            return "postgresql+psycopg://" + database_url[len(prefix):]
+    return database_url
+
+
+_database_url = _with_psycopg_driver(settings.database_url)
+_connect_args = {"check_same_thread": False} if _database_url.startswith("sqlite") else {}
+engine = create_engine(_database_url, connect_args=_connect_args)
 
 
 def init_db() -> None:
