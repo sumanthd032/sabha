@@ -13,6 +13,13 @@ The manager holds a live registry of WebSocket connections in process
 memory, not in the database: a connection is only ever meaningful to
 the process holding its socket, and there is exactly one such process
 in this deployment.
+
+Every refit also sweeps for generated variants that have crossed the
+minimum vote threshold and scores them against their parent, per
+section 6.3. This is pure computation over the fit that just happened,
+no language model call, which is why it runs on every refit rather
+than waiting on a human to trigger it the way llm/client.py backed
+generation itself does.
 """
 
 import asyncio
@@ -24,6 +31,7 @@ from sqlmodel import Session, col, select
 
 from sabha.models import Statement, Vote
 from sabha.services.factorisation import FactorisationParams
+from sabha.services.generation import evaluate_pending_variants
 from sabha.services.model_run import fit_and_persist, result_from_model_run
 from sabha.services.rankings import RankedStatement, build_rankings
 
@@ -91,6 +99,7 @@ class LiveSessionManager:
         with Session(self._engine) as session:
             model_run = fit_and_persist(session, consultation_id, FactorisationParams())
             result = result_from_model_run(model_run)
+            evaluate_pending_variants(session, consultation_id, result)
             statements = {
                 s.id: s
                 for s in session.exec(

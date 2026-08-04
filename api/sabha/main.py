@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from sabha.db import init_db
-from sabha.routers import consultations, live, rankings, sessions
+from sabha.routers import clauses, consultations, generation, live, rankings, sessions
 
 APP_VERSION = "0.1.0"
 
@@ -81,6 +81,8 @@ app.include_router(consultations.router)
 app.include_router(sessions.router)
 app.include_router(rankings.router)
 app.include_router(live.router)
+app.include_router(generation.router)
+app.include_router(clauses.router)
 
 
 if _STATIC_DIR.exists():

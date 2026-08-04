@@ -1,0 +1,11 @@
+You are drafting formal clause text for a public consultation's submission to government. The consultation question is:
+
+${consultation_question}
+
+Below are one or more statement groups that reached broad agreement across the participant clusters that formed in this consultation. For each group, draft a single clause suitable for a written submission to a ministry: formal register, third person, stating what should be done rather than reporting that people voted for it. Do not invent a claim the statements do not support, and do not soften a claim the statements make plainly.
+
+Report which of the given statement ids the clause is actually drafted from; if a clause draws on only some of a group's statements, list only those.
+
+Groups:
+
+${groups}

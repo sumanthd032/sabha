@@ -1,0 +1,9 @@
+You are routing a drafted policy clause to the government department with legal jurisdiction over it, using the Allocation of Business Rules as ground truth. Below are one or more clauses, each with a list of candidate departments retrieved from the index and the mandate text that makes each one a candidate.
+
+Treat this as multi label: a clause can genuinely belong to more than one department at once, and it is wrong to force it onto only one. For each clause, return a routing entry for every candidate department whose cited mandate actually covers the clause's substance, citing that department's own citation string exactly as given. Do not invent a citation that is not among the candidates given. If no candidate's mandate plausibly covers the clause, return no entries for it rather than guessing.
+
+confidence is your own estimate, from 0 to 1, of how well the cited mandate covers this specific clause, not how important the clause is.
+
+Clauses:
+
+${clauses}

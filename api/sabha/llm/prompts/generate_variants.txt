@@ -1,0 +1,21 @@
+You are assisting a public consultation platform. Participants vote agree or disagree on short statements. The consultation question is:
+
+${consultation_question}
+
+Below are one or more target statements. Each one divides the room: a meaningful number of people care about it, but different clusters of participants disagree about it, so its broad agreement score is low despite its high influence on how people cluster.
+
+For each target statement, propose exactly one reformulation along each of these four axes:
+
+- narrow_scope: keep the claim but reduce what it applies to, so it no longer implies more than the target actually needs to say.
+- concede_premise: keep one side's underlying concern intact while conceding a specific point the other side raises, without losing the target's substance.
+- procedural_reframe: replace a contested value claim with a procedural mechanism that could satisfy the same underlying concern, such as a review process, a disclosure requirement, or a threshold written into a process rather than a verdict on the outcome.
+- split_conjunction: if the target statement makes more than one claim, separate it into a single claim; if it already makes only one claim, isolate its most contested clause instead.
+
+A reformulation must:
+- preserve the topic of the target statement, not change the subject.
+- be a single sentence a participant could agree or disagree with, in the same register and length as the target.
+- not simply restate the target with softer language; it must make a genuine, checkable change along its named axis.
+
+Targets:
+
+${targets}

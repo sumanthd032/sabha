@@ -206,3 +206,86 @@ class LedgerEntry(SQLModel, table=True):
     policy_state: dict[str, Any] = Field(sa_column=Column(JSON))
     filing_id: int | None = Field(default=None, foreign_key="filing.id")
     consultation_id: int | None = Field(default=None, foreign_key="consultation.id")
+
+
+class LlmCache(SQLModel, table=True):
+    """A cached language model response, keyed on sha256(model + prompt + schema).
+
+    Checked before every call in llm/client.py, so a development rerun of
+    the same generation, drafting, routing, or evaluation prompt costs
+    zero requests against the free tier's daily budget.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    cache_key: str = Field(unique=True, index=True)
+    model: str
+    schema_name: str
+    prompt: str
+    response_json: dict[str, Any] = Field(sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class EmbeddingCache(SQLModel, table=True):
+    """A cached embedding vector, keyed on sha256(model + content).
+
+    Any given piece of text is embedded once, ever: a repeat request for
+    the same text under the same model reads this row instead of calling
+    the API again.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    content_hash: str = Field(unique=True, index=True)
+    model: str
+    vector: list[float] = Field(sa_column=Column(JSON))
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class QuotaUsage(SQLModel, table=True):
+    """A persisted per-day request counter for the Gemini free tier guard.
+
+    The per-minute half of the guard is a token bucket held in process
+    memory, since a minute's window resets on its own regardless of
+    restarts. The per-day half has to survive a restart within the same
+    day, which is what this table is for.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    day: str = Field(unique=True, index=True)
+    request_count: int = Field(default=0)
+
+
+class AllocationRule(SQLModel, table=True):
+    """One indexed entry from the Allocation of Business Rules.
+
+    embedding is computed once, when the rule set is loaded, and reused
+    for every routing decision rather than recomputed per request.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    department: str
+    citation: str
+    mandate_text: str
+    embedding: list[float] = Field(sa_column=Column(JSON))
+
+
+class RoutingDecision(SQLModel, table=True):
+    """A jurisdiction routing decision for one drafted clause, against one
+    candidate department.
+
+    Multi label by construction: a clause can and often does receive more
+    than one row, one per department whose mandate plausibly covers it.
+    needs_human_review is set whenever this row's own confidence is low,
+    per section 6.5: a low confidence route is queued for a human rather
+    than filed on a guess, even if other rows for the same clause are
+    confident.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    clause_id: int = Field(foreign_key="clause.id")
+    allocation_rule_id: int = Field(foreign_key="allocationrule.id")
+    department: str
+    citation: str
+    confidence: float
+    rationale: str
+    needs_human_review: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=_utcnow)

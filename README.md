@@ -57,7 +57,7 @@ All four must pass before any commit lands.
 
 ## Current state
 
-Steps 1 to 8 of the build. The API exposes `/api/health`, returning build
+Steps 1 to 9 of the build. The API exposes `/api/health`, returning build
 metadata including the running commit hash, and is deployed live at
 [sabha-n4f7.onrender.com](https://sabha-n4f7.onrender.com). The frontend has
 a design token library and base component set, with a working reference at
@@ -91,6 +91,23 @@ live over the same WebSocket channel, so a refit triggered by anyone's
 vote updates the screen without a reload, and the one orchestrated
 motion moment, a participant's own stroke settling into position while
 the affected statement's figure rolls to its new value, is wired here.
+
+The language model layer sits behind a response cache and a free tier
+quota guard, both checked before any feature call, per
+`docs/decisions/0003-gemini-model-verification.md`. On top of that: a
+generation loop that proposes reformulations of a statement's real
+fault lines in one batched call, injects them into the live pool
+labelled as generated with their parent visible, and retires a variant
+that does not significantly beat its parent on a two sample z-test;
+clause drafting with statement provenance and the certificate figures
+behind it; jurisdiction routing over an indexed subset of the
+Allocation of Business Rules, grounded in embedding retrieval so every
+citation is checkable, with a low confidence route queued for a human
+rather than filed; and reply evaluation, scoring engagement and
+detecting templated replies across a department's filings by near
+duplicate clustering. Every call is cached and quota guarded before it
+reaches the network, so a rerun of the same generation, drafting,
+routing, or evaluation costs zero requests.
 
 See `docs/architecture.md`, `docs/algorithms.md`, and `docs/api.md` for the
 detail behind each of these.

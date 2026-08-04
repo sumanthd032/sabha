@@ -8,7 +8,7 @@ table stores directly.
 """
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from sqlmodel import SQLModel
 
@@ -102,3 +102,40 @@ class CertificateOut(SQLModel):
     statement: StatementOut
     participant_count: int
     clusters: list[ClusterSupportOut]
+
+
+class GenerationRunOut(SQLModel):
+    injected: list[StatementOut]
+
+
+class ClauseOut(SQLModel):
+    id: int
+    text: str
+    statement_ids: list[int]
+    certificate_figures: dict[str, Any]
+
+
+class ClauseDraftOut(SQLModel):
+    clauses: list[ClauseOut]
+
+
+class RoutingDecisionOut(SQLModel):
+    id: int
+    clause_id: int
+    department: str
+    citation: str
+    confidence: float
+    rationale: str
+    needs_human_review: bool
+
+
+class RouteClausesRequest(SQLModel):
+    clause_ids: list[int] | None = None
+
+
+class RouteClausesOut(SQLModel):
+    decisions: list[RoutingDecisionOut]
+
+
+class HumanReviewQueueOut(SQLModel):
+    clause_ids: list[int]

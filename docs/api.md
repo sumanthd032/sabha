@@ -211,3 +211,101 @@ pushes, not to carry requests. Refits are not run on every vote. A vote
 (re)schedules a single timer per consultation, so a burst of concurrent
 votes collapses into one refit rather than one per vote. See "Refit
 flow" in `docs/architecture.md`.
+
+## Generation
+
+### `POST /api/consultations/{consultation_id}/generation/run`
+
+Selects this consultation's current fault lines, per
+`docs/algorithms.md`, and proposes their reformulations in a single
+batched call to the language model. No request body. Returns
+`GenerationRunOut`:
+
+```
+{
+  "injected": [
+    { "id": 71, "code": "S-0071", "text": "...", "language": "en",
+      "author_type": "generated", "parent_statement_id": 12, "is_synthetic": true }
+  ]
+}
+```
+
+`injected` is empty, with no call made, when there is no eligible
+target or no room left under the generation pool fraction cap. `404`
+before the first model run: there is nothing to locate a fault line
+against yet. `503` when the daily quota is exhausted, with the body
+`{ "detail": "generation paused, daily quota reached" }`, the exact
+copy section 4.2 requires the interface to show.
+
+A generated statement's own significance test against its parent runs
+automatically on every debounced refit, not from an endpoint: it costs
+no language model call, so there is nothing here to trigger it with.
+
+## Clauses
+
+### `GET /api/consultations/{consultation_id}/clauses`
+
+Every clause drafted so far for this consultation. Returns
+`ClauseOut[]`:
+
+```
+{
+  "id": 4,
+  "text": "...",
+  "statement_ids": [12, 19],
+  "certificate_figures": {
+    "participant_count": 214,
+    "clusters": [ { "cluster": 0, "participant_count": 71, "agree_count": 65, "agree_fraction": 0.915 }, ... ]
+  }
+}
+```
+
+`certificate_figures` is the same shape `services/certificate.py`
+builds for the consensus certificate, captured at drafting time.
+
+### `POST /api/consultations/{consultation_id}/clauses/draft`
+
+Drafts a clause for each of the current bridging ranking's leaders
+that clears the participant coverage bar, in a single batched call. No
+request body. Returns `ClauseDraftOut`, `{ "clauses": ClauseOut[] }`,
+containing only the clauses drafted by this call. `404` before the
+first model run. `503` on daily quota exhaustion, same body as
+generation above.
+
+### `POST /api/consultations/{consultation_id}/clauses/route`
+
+Routes the given clauses against the indexed Allocation of Business
+Rules subset, per `docs/algorithms.md`. Request:
+
+```
+{ "clause_ids": [4, 5] }
+```
+
+`clause_ids` omitted or `null` routes every clause in the
+consultation. Returns `RouteClausesOut`:
+
+```
+{
+  "decisions": [
+    { "id": 9, "clause_id": 4, "department": "Ministry of Labour and Employment",
+      "citation": "Code on Social Security, 2020, section 2(61)",
+      "confidence": 0.91, "rationale": "...", "needs_human_review": false }
+  ]
+}
+```
+
+A clause can receive more than one decision, one per department whose
+mandate plausibly covers it. `503` on daily quota exhaustion, same
+body as generation above.
+
+### `GET /api/consultations/{consultation_id}/clauses/human-queue`
+
+Every clause in this consultation with no confident route: no routing
+decision at all, or every decision recorded for it flagged
+`needs_human_review`. Returns `HumanReviewQueueOut`,
+`{ "clause_ids": [7] }`. Section 6.5: a low confidence route is queued
+for a human rather than filed on a guess.
+
+Reply evaluation, `services/reply_evaluation.py`, has no endpoint yet:
+it acts on `Reply` rows, and nothing in the API can create one until
+the filing agent lands in step 10.

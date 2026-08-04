@@ -14,6 +14,7 @@ _REQUIRED = ("DATABASE_URL", "GEMINI_API_KEY", "QUOTA_RPM", "QUOTA_RPD")
 _DEFAULTS = {
     "GEMINI_MODEL": "gemini-2.5-flash",
     "GEMINI_EMBED_MODEL": "gemini-embedding-001",
+    "GEMINI_EMBED_MODEL_FALLBACK": "gemini-embedding-2",
     "FILING_MODE": "mock",
     "DEMO_CLOCK_SCALE": "1",
 }
@@ -29,6 +30,7 @@ class Settings:
     quota_rpd: int
     gemini_model: str
     gemini_embed_model: str
+    gemini_embed_model_fallback: str
     filing_mode: str
     demo_clock_scale: float
 
@@ -55,6 +57,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         quota_rpd=int(values["QUOTA_RPD"]),
         gemini_model=values["GEMINI_MODEL"],
         gemini_embed_model=values["GEMINI_EMBED_MODEL"],
+        gemini_embed_model_fallback=values["GEMINI_EMBED_MODEL_FALLBACK"],
         filing_mode=values["FILING_MODE"],
         demo_clock_scale=float(values["DEMO_CLOCK_SCALE"]),
     )

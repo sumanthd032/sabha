@@ -168,4 +168,120 @@ zero, and passed to `factorisation.fit()`. Every flag carries a
 mean similarity, and the mean shared vote count, so the decision is
 auditable rather than a bare number.
 
+## Generation loop
+
+Implemented in `api/sabha/services/generation.py`.
+
+Section 6.3 of the project description, run bottom up on top of
+`llm/client.py`: every call is cached and quota guarded before any
+feature logic touches it.
+
+**Target selection.** A fault line is a statement with a low bridging
+score `mu(j)` and a high loading norm `|g(j)|`: a position that matters
+enough to split the room, rather than one nobody has an opinion on.
+The two measures are on different scales, so targets are ranked by the
+sum of each measure's own rank, computed by a double argsort, rather
+than a weighted combination of the raw values that would need a
+justified weight. Eligible targets are restricted to participant
+authored, approved statements: the loop reformulates what people
+actually wrote, not its own earlier output. A target with a child
+still awaiting its own significance test is excluded until that round
+finishes, so one fault line never accumulates two overlapping batches.
+
+**Batching.** All eligible targets up to `max_targets_per_cycle` are
+sent in one call, and one call returns every axis's variant for every
+target at once, per section 4.2's batching requirement. The remaining
+budget under `pool_fraction_cap` is computed before the call: if fewer
+than four slots remain, no call is made at all, since one target
+always needs exactly four variants, one per axis.
+
+**Injection.** Every variant becomes a new `Statement` row,
+`author_type` generated, `parent_statement_id` set to its target,
+approved and immediately visible: the target is already something real
+participants vote on, so its reformulations join the same live pool.
+It has no fitted `g(j)` or `mu(j)` until the next refit, so it only
+enters the adaptive selection candidate pool then, per `docs/api.md`.
+
+**The significance test.** After a target's variant reaches
+`min_votes_for_evaluation` votes, its `mu(j)` is compared against its
+parent's with a two sample z-test:
+
+```
+z = (mu_variant - mu_parent) / sqrt(var_variant + var_parent)
+```
+
+where `var` is `statement_posterior_width(n, lambda_mu)` from
+`selection.py`, the same ridge posterior variance the adaptive
+selection policy already uses for its own refine phase. Reusing it
+here means "is this variant significantly better" and "how uncertain
+is this statement's score" come from one consistent model rather than
+two. A variant clearing `significance_z` (one sided, 1.645 by default,
+the 95 per cent bound) is retained; anything short of that bar is
+retired, `moderation_state` set to rejected, which removes it from the
+servable pool in `routers/sessions.py` without deleting the row, so
+its lineage stays inspectable. Every evaluation, retained or retired,
+is written to the ledger with the z score and both vote counts.
+Evaluation costs no language model call, so it runs on every debounced
+refit in `services/live.py` rather than waiting on a human trigger.
+
+## Jurisdiction routing
+
+Implemented in `api/sabha/services/routing.py`, over an index built by
+`api/sabha/seed/allocation_rules.py`.
+
+Section 6.5: routing is retrieval against a checkable ground truth, the
+Allocation of Business Rules, not a guess. Each indexed rule is one
+`AllocationRule` row: a department, a citation, mandate text, and the
+mandate's embedding, computed once by `llm/client.call_embedding` and
+cached by content hash, per section 4.2's embedding cache requirement.
+
+For a drafted clause, its own embedding is compared against every
+indexed rule by cosine similarity, and the `top_k_candidates` closest
+become the candidates offered to the model. A single batched call
+across every clause being routed then asks for a routing decision
+citing one of exactly those candidates, per department, with a
+confidence and a rationale. A citation the reply returns that does not
+match an offered candidate's own `(department, citation)` pair is
+dropped rather than trusted: the citation in the database is always
+one that was genuinely retrieved, never invented.
+
+A decision with `confidence` under `confidence_threshold` is persisted
+with `needs_human_review` set. `clauses_awaiting_human_review` reads
+the human queue back out as a query rather than a stored sentinel: a
+clause reaches it either because every decision recorded for it was
+low confidence, or because it received no decision at all, which
+covers both a clause with no offered candidate and a clause the index
+itself has no confident coverage for. The queue is naturally
+non-empty by construction, since the indexed subset is deliberately
+incomplete, per section 6.5's own framing.
+
+## Reply evaluation
+
+Implemented in `api/sabha/services/reply_evaluation.py`.
+
+Section 6.7 splits into two halves that are solved differently.
+
+**Engagement scoring.** Whether a reply substantively addressed the
+clauses it was filed against, versus returned a boilerplate
+acknowledgement, is a model judgement: the stakes of a wrong call are
+low and the output is advisory. Every not yet scored reply is judged
+in a single batched call, each paired with the clause text its filing
+actually submitted. A reply that already carries a score is left
+alone, so a rerun never overwrites a persisted judgement.
+
+**Template detection.** Whether a department is sending the same reply
+to unrelated filings is not a language judgement at all, it is a near
+duplicate detection problem, and it is solved the same way
+`coordination.py` finds a voting bloc: connected components over a
+thresholded similarity graph. Every reply from one department is
+embedded, normalised, and compared pairwise by cosine similarity;
+pairs at or above `similarity_threshold` are edges, and
+`scipy.sparse.csgraph.connected_components` finds the components. A
+component of at least `min_cluster_size` is a template, and every
+reply in it is stamped with a shared `template_cluster` label. A
+component of one is not a template, it is just a reply, and is left
+unstamped. This works only at platform scale: a single citizen filing
+once has nothing to compare their reply against, and a platform
+holding many departments' replies can see nothing else.
+
 ## Escalation as optimal stopping

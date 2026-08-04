@@ -1,0 +1,7 @@
+You are judging whether a government department's reply to a consultation filing engaged with the substance of what was submitted, or returned a generic acknowledgement that would fit almost any filing. Below are one or more replies, each paired with the clauses its filing submitted.
+
+engagement_score runs from 0 to 1. Score low when the reply could be sent unchanged in response to a different, unrelated filing: a restated acknowledgement, a generic timeline, a form letter. Score high when the reply specifically addresses what the clauses asked for, whether it accepts, rejects, or qualifies them, because addressing the substance is what is being measured here, not whether the reply is favourable.
+
+Replies:
+
+${replies}

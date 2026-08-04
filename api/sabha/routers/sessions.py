@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, col, select
 
 from sabha.db import get_session
-from sabha.models import Participant, Statement, Vote
+from sabha.models import ModerationState, Participant, Statement, Vote
 from sabha.routers.consultations import get_consultation_or_404
 from sabha.routers.live import get_live_manager
 from sabha.schemas import JoinResponse, StatementOut, VoteRequest, VoteResponse
@@ -57,7 +57,10 @@ def next_statement(
     assert participant.id is not None
 
     all_statements = session.exec(
-        select(Statement).where(Statement.consultation_id == consultation_id)
+        select(Statement).where(
+            Statement.consultation_id == consultation_id,
+            Statement.moderation_state == ModerationState.APPROVED,
+        )
     ).all()
     by_id = {s.id: s for s in all_statements if s.id is not None}
 

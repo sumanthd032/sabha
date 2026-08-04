@@ -47,11 +47,17 @@ that scheduled it.
 Once the refit finishes, it persists a new `model_run` row, per
 `services/model_run.fit_and_persist`, rows are inserted fresh and never
 updated, so a figure shown to the public can always be reproduced by
-refitting with that run's own parameters, and builds both rankings with
-`services/rankings.build_rankings`. That message is broadcast to every
-WebSocket connected to the consultation, and it is the only path by
-which a client learns a refit happened; there is no separate polling
-endpoint for "has anything changed".
+refitting with that run's own parameters, then sweeps for any generated
+statement that has crossed the minimum vote threshold with
+`services/generation.evaluate_pending_variants`, retiring the ones that
+do not significantly beat their parent, before building both rankings
+with `services/rankings.build_rankings`. The evaluation step is pure
+computation over the fit that just happened, no language model call,
+which is why it rides along on every refit rather than needing its own
+trigger. That message is broadcast to every WebSocket connected to the
+consultation, and it is the only path by which a client learns a refit
+happened; there is no separate polling endpoint for "has anything
+changed".
 
 ```
 POST /votes ---> insert vote ---> notify_vote_cast
