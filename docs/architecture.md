@@ -80,6 +80,40 @@ pipeline: `GET .../statements/next` falls back to a uniformly random,
 not yet voted, statement until the first run exists, so a participant
 can always start voting immediately.
 
+## Escalation flow
+
+Unlike the refit, nothing about escalation is triggered by a request.
+A filing's statutory clock runs on wall time whether or not anyone is
+voting, so `main.py`'s lifespan starts one process wide
+`services.escalation.EscalationScheduler` alongside the app and stops
+it on shutdown, the same singleton shape `routers/live.py` uses for
+its own manager, but ticking on a fixed interval rather than a
+per-vote debounce.
+
+```
+app startup ---> EscalationScheduler.start()
+                        |
+                   asyncio.sleep(interval)  (repeats)
+                        |
+                   asyncio.to_thread(sweep)
+                        |
+                   run_escalation_sweep: every open filing,
+                   grouped by department so each department's
+                   backward induction policy is computed once
+                        |
+                   run_escalation_check per filing: start the
+                   clock, wait, escalate, or close, each a
+                   ledger entry
+```
+
+The sweep runs in a worker thread on its own database session, exactly
+the refit's own reasoning: the event loop stays free to answer
+requests, and a session is not safe to share with the thread that
+scheduled it. `POST /api/escalation/sweep` runs the same sweep
+on demand, so a demonstration can trigger a check on cue instead of
+narrating over a silent wait for the next tick; nothing about
+escalation depends on that endpoint ever being called.
+
 ## Deployment shape
 
 See `docs/deployment.md` and `docs/decisions/0002-free-hosting-targets.md`

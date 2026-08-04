@@ -57,11 +57,10 @@ All four must pass before any commit lands.
 
 ## Current state
 
-Steps 1 to 9 of the build. The API exposes `/api/health`, returning build
-metadata including the running commit hash, and is deployed live at
-[sabha-n4f7.onrender.com](https://sabha-n4f7.onrender.com). The frontend has
-a design token library and base component set, with a working reference at
-`/system`.
+All ten steps of the build. `/api/health` returns build metadata and a
+live database check, and the app is deployed at
+[sabha-n4f7.onrender.com](https://sabha-n4f7.onrender.com). The frontend
+has a design token library and base component set, referenced at `/system`.
 
 The data model covers every entity in `docs/project.md`, with a synthetic
 seed corpus and vote generator whose planted opinion structure is
@@ -79,8 +78,7 @@ The voting screen is the primary consultation flow: one statement at a
 time, fully keyboard operable with agree, disagree, and skip, and
 completable end to end without a mouse. A vote is recorded locally the
 instant it is cast and reconciles with the server afterwards, so a slow
-or interrupted connection never blocks voting, only delays syncing, which
-the screen shows honestly rather than hiding.
+connection never blocks voting, only delays syncing, shown honestly.
 
 A results screen shows the opinion map as a field of tally strokes, the
 faction legend and its accessible text alternative, the bridging ranking
@@ -89,16 +87,16 @@ consensus certificate: the only element in the interface permitted the
 reserved consensus green and the only one with a 2px border. It stays
 live over the same WebSocket channel, so a refit triggered by anyone's
 vote updates the screen without a reload, and the one orchestrated
-motion moment, a participant's own stroke settling into position while
-the affected statement's figure rolls to its new value, is wired here.
+motion moment, a stroke settling into position as its statement's
+figure rolls to its new value, is wired here.
 
 The language model layer sits behind a response cache and a free tier
-quota guard, both checked before any feature call, per
+quota guard, checked before any feature call, per
 `docs/decisions/0003-gemini-model-verification.md`. On top of that: a
 generation loop that proposes reformulations of a statement's real
-fault lines in one batched call, injects them into the live pool
-labelled as generated with their parent visible, and retires a variant
-that does not significantly beat its parent on a two sample z-test;
+fault lines in one batched call, injects them labelled as generated
+with their parent visible, and retires a variant that does not
+significantly beat its parent on a two sample z-test;
 clause drafting with statement provenance and the certificate figures
 behind it; jurisdiction routing over an indexed subset of the
 Allocation of Business Rules, grounded in embedding retrieval so every
@@ -108,6 +106,14 @@ detecting templated replies across a department's filings by near
 duplicate clustering. Every call is cached and quota guarded before it
 reaches the network, so a rerun of the same generation, drafting,
 routing, or evaluation costs zero requests.
+
+A filing adapter ships pointed at a mock endpoint only, gated by human
+confirmation before any first filing to a new department. An
+escalation scheduler solves when to escalate by backward induction on
+the RTI Act's three stage structure, on a compressible demonstration
+clock with a per-department rate limit, every action landing in an
+append-only ledger with the policy behind it. `make prepare-demo` and
+`make prewarm` prepare and check a deployment; see `docs/demo-script.md`.
 
 See `docs/architecture.md`, `docs/algorithms.md`, and `docs/api.md` for the
 detail behind each of these.

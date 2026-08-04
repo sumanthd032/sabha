@@ -18,3 +18,8 @@ def test_health_reports_build_metadata() -> None:
     assert body["version"] == APP_VERSION
     assert isinstance(body["commit"], str) and body["commit"] != ""
     assert isinstance(body["started_at"], str) and body["started_at"] != ""
+
+
+def test_health_confirms_the_database_answers_a_query() -> None:
+    body = client.get("/api/health").json()
+    assert body["database"] == "ok"

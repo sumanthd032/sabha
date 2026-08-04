@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from sqlmodel import SQLModel
 
-from sabha.models import AuthorType
+from sabha.models import AuthorType, FilingStage
 
 
 class ConsultationOut(SQLModel):
@@ -139,3 +139,53 @@ class RouteClausesOut(SQLModel):
 
 class HumanReviewQueueOut(SQLModel):
     clause_ids: list[int]
+
+
+class FileClauseSetRequest(SQLModel):
+    department: str
+    clause_ids: list[int]
+    confirmed_new_department: bool = False
+
+
+class FilingOut(SQLModel):
+    id: int
+    consultation_id: int
+    department: str
+    channel: str
+    artefact: str
+    stage: FilingStage
+    submitted_at: datetime | None
+    statutory_deadline: datetime | None
+    created_at: datetime
+
+
+class HumanGatePendingOut(SQLModel):
+    department: str
+    detail: str
+
+
+class ReplyRequest(SQLModel):
+    received_text: str
+
+
+class ReplyOut(SQLModel):
+    id: int
+    filing_id: int
+    received_text: str
+    engagement_score: float | None
+    template_cluster: str | None
+    received_at: datetime
+
+
+class LedgerEntryOut(SQLModel):
+    id: int
+    occurred_at: datetime
+    action: str
+    reason: str
+    policy_state: dict[str, Any]
+    filing_id: int | None
+    consultation_id: int | None
+
+
+class LedgerOut(SQLModel):
+    entries: list[LedgerEntryOut]

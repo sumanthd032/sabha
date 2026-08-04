@@ -16,6 +16,7 @@ _DEFAULTS = {
     "GEMINI_EMBED_MODEL": "gemini-embedding-001",
     "GEMINI_EMBED_MODEL_FALLBACK": "gemini-embedding-2",
     "FILING_MODE": "mock",
+    "FILING_LIVE_CONFIRMATION": "",
     "DEMO_CLOCK_SCALE": "1",
 }
 
@@ -32,6 +33,7 @@ class Settings:
     gemini_embed_model: str
     gemini_embed_model_fallback: str
     filing_mode: str
+    filing_live_confirmation: str
     demo_clock_scale: float
 
 
@@ -59,6 +61,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         gemini_embed_model=values["GEMINI_EMBED_MODEL"],
         gemini_embed_model_fallback=values["GEMINI_EMBED_MODEL_FALLBACK"],
         filing_mode=values["FILING_MODE"],
+        filing_live_confirmation=values["FILING_LIVE_CONFIRMATION"],
         demo_clock_scale=float(values["DEMO_CLOCK_SCALE"]),
     )
 

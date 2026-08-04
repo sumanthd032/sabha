@@ -285,3 +285,84 @@ once has nothing to compare their reply against, and a platform
 holding many departments' replies can see nothing else.
 
 ## Escalation as optimal stopping
+
+Implemented in `api/sabha/services/escalation.py`.
+
+Section 6.6: after a filing goes out, the question repeats every day,
+keep waiting or escalate. This is a Markov decision process over
+elapsed time within the current channel stage, with two actions, wait
+or escalate, and a cost combining an ongoing delay charge with a fixed
+step cost for escalating. The Right to Information Act gives the
+concrete three stage structure: thirty days for the department to
+reply (`AWAITING_REPLY`), then a First Appellate Authority
+(`ESCALATED_APPELLATE`), then the Information Commission
+(`ESCALATED_COMMISSION`). Each stage's own horizon is short enough that
+backward induction over it is exact, not approximated.
+
+**The hazard.** A department's time to reply is modelled as a discrete
+hazard, `hazard[t]`, the probability a reply arrives on day `t` given
+none has arrived through day `t - 1`. `department_response_days` reads
+every observed filing to reply latency for a department, and
+`_empirical_hazard` turns that into a per day hazard by the usual
+survival counting: divide the count of replies landing exactly on day
+`t` by the number still unreplied entering day `t`. A department with
+no history yet falls back to `_geometric_hazard`, a constant daily
+probability implied by `prior_mean_reply_days`.
+
+This build only ever observes filing to reply latency, never which
+stage a reply arrived in, so the same underlying hazard curve informs
+every stage. That would make escalating pure cost with no benefit,
+since the chance of a reply on any given day would be identical
+whichever stage you are in, so `escalation_effectiveness` scales the
+hazard up at each step, appellate by that factor and commission by its
+square, standing in for the real mechanism, that a higher authority
+can compel a reply a plain wait cannot, until stage specific data
+exists to fit directly.
+
+**The induction.** `_backward_induction` solves one escalatable stage
+given the value of moving on to the next: `value[horizon]` is the
+forced boundary, waiting past the statutory deadline is never offered
+as a choice, so escalating there is the only cost. Working backward,
+
+```
+wait_cost(t)     = delay_cost_per_day + (1 - hazard[t]) * value(t + 1)
+escalate_cost(t) = escalate_step_cost + next_stage_value
+value(t)         = min(wait_cost(t), escalate_cost(t))
+policy(t)        = escalate if escalate_cost(t) < wait_cost(t) else wait
+```
+
+`(1 - hazard[t])` is the chance no reply arrives on day `t`, so a reply
+ends the episode for free, at cost `0`, from that point. The commission
+stage has nowhere further to escalate to, so `_pure_wait_value` solves
+it with the wait branch only, forced to `unresolved_closure_cost` at
+its own horizon rather than an escalate cost. Chaining the three
+stages back to front, `compute_escalation_policy` computes the
+commission stage's value first, feeds it in as appellate's
+`next_stage_value`, then feeds appellate's value in as awaiting
+reply's, so a decision at the very first day already accounts for
+everything downstream.
+
+**The compressible clock.** `effective_elapsed_days` multiplies real
+wall clock time since entering a stage by `DEMO_CLOCK_SCALE`, so a
+statutory day can be minutes long for a demonstration and a real day
+otherwise. `_stage_entered_at` reads a filing's own ledger entries for
+when it last changed stage rather than storing that timestamp a second
+time, falling back to `submitted_at` for a filing still in its first
+stage. Every scheduling decision, waiting is not one, is recorded to
+the ledger with `demo_clock_scale` in its `policy_state`, so the
+compression is never silent, per section 4.2 and section 10.3.
+
+**Rate limiting.** Section 9: rate limits per department, enforced,
+not merely recommended. `department_escalation_count_in_window` counts
+this department's own `escalated_to_*` ledger entries inside a
+trailing window; `run_escalation_check` reads that count before ever
+changing a filing's stage, and defers with its own ledger entry,
+`escalation_deferred_rate_limit`, when the department is already at
+its limit, rather than escalating anyway.
+
+`run_escalation_sweep` applies this to every open filing, computing
+each distinct department's policy once even when it holds many
+filings, and `EscalationScheduler` ticks that sweep on a fixed
+interval in a background asyncio task, the same reasoning
+`services/live.py`'s debounced refit uses: its own database session,
+off the event loop, so the sweep never stalls a request in flight.

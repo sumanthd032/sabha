@@ -9,6 +9,28 @@ supplied on every later call. There is no other authentication: a
 session is anonymous by design, and a token is not a secret worth more
 than the vote it is attached to.
 
+## Health
+
+### `GET /api/health`
+
+Build metadata and a database connectivity check, for the prewarm
+described in `docs/deployment.md`. Returns:
+
+```
+{
+  "status": "ok" | "degraded",
+  "database": "ok" | "unreachable",
+  "commit": "9a74961",
+  "version": "0.1.0",
+  "started_at": "2026-01-01T00:00:00Z"
+}
+```
+
+`database` runs a trivial query against whatever DATABASE_URL points
+at on every call, so a request here is also what wakes a suspended
+Neon database. `status` reads `degraded` whenever `database` does not
+read `ok`; the process itself never goes down over this.
+
 ## Consultations
 
 ### `GET /api/consultations`
@@ -306,6 +328,92 @@ decision at all, or every decision recorded for it flagged
 `{ "clause_ids": [7] }`. Section 6.5: a low confidence route is queued
 for a human rather than filed on a guess.
 
-Reply evaluation, `services/reply_evaluation.py`, has no endpoint yet:
-it acts on `Reply` rows, and nothing in the API can create one until
-the filing agent lands in step 10.
+Reply evaluation, `services/reply_evaluation.py`, has no endpoint of
+its own: it runs automatically wherever a reply already exists, and
+`POST .../filings/{filing_id}/replies` below is what creates one.
+
+## Filings
+
+### `GET /api/consultations/{consultation_id}/filings`
+
+Every filing for this consultation. Returns `FilingOut[]`:
+
+```
+{
+  "id": 3,
+  "consultation_id": 1,
+  "department": "Ministry of Labour and Employment",
+  "channel": "mock",
+  "artefact": "MOCK-000003",
+  "stage": "awaiting_reply",
+  "submitted_at": "2026-01-01T00:00:00Z",
+  "statutory_deadline": "2026-01-31T00:00:00Z",
+  "created_at": "2026-01-01T00:00:00Z"
+}
+```
+
+`stage` is one of `drafted`, `filed`, `awaiting_reply`,
+`escalated_appellate`, `escalated_commission`, `replied`, `closed`.
+
+### `POST /api/consultations/{consultation_id}/filings`
+
+Files the given clauses to a department through the channel
+`FILING_MODE` resolves to, mock in every configuration this build
+ships. Request:
+
+```
+{ "department": "...", "clause_ids": [4, 5], "confirmed_new_department": false }
+```
+
+`409` when this is the first filing to that department and
+`confirmed_new_department` was not passed, the human gate section 9
+requires, with the department named in the body:
+
+```
+{ "detail": { "department": "...", "detail": "this is the first filing to this department; resend with confirmed_new_department set to true" } }
+```
+
+Returns `FilingOut` on success, stage `filed`.
+
+### `POST /api/consultations/{consultation_id}/filings/{filing_id}/replies`
+
+Records a department's reply and moves the filing to stage `replied`,
+stopping its escalation clock. Request `{ "received_text": "..." }`.
+Returns `ReplyOut`. `404` if the filing does not exist in this
+consultation. The only path in this codebase that creates a `Reply`
+row.
+
+### `POST /api/escalation/sweep`
+
+Runs one escalation sweep now, across every open filing in every
+consultation, per `docs/algorithms.md`'s "Escalation as optimal
+stopping". Exists so a demonstration can trigger a check on cue;
+`services/escalation.EscalationScheduler` already ticks this on its
+own on a background interval, so nothing here is required for
+escalation to happen on its own. Returns `FilingOut[]`, every filing
+the sweep touched.
+
+## Ledger
+
+### `GET /api/consultations/{consultation_id}/ledger`
+
+The append-only public record of every autonomous action taken for
+this consultation's filings, oldest first. Returns `LedgerOut`:
+
+```
+{
+  "entries": [
+    {
+      "id": 12, "occurred_at": "2026-01-01T00:00:00Z",
+      "action": "escalated_to_escalated_appellate",
+      "reason": "Ministry of Labour and Employment did not reply within the modelled window",
+      "policy_state": { "elapsed_effective_days": 30.4, "demo_clock_scale": 1.0 },
+      "filing_id": 3, "consultation_id": 1
+    }
+  ]
+}
+```
+
+Read only: there is no endpoint anywhere that writes a `LedgerEntry`
+directly, every row comes from `services/ledger.record`, called from
+inside whichever service took the action it documents.
